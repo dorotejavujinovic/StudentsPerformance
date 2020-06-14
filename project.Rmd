@@ -1,0 +1,167 @@
+---
+title: "Project about students performance"
+author: "Doroteja Vujinovic"
+date: "6/13/2020"
+output:  
+    html_document: 
+      toc: yes
+      toc_float: yes
+bibliography: bibliography.bib
+link-citations: yes
+---
+
+```{r setup, include=TRUE, warning=FALSE,message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+data<-read.csv("StudentsPerformance.csv")
+```
+
+# Introduction
+
+Data I choose to present is performance of 1000 US students on exams. Based on data that is provided on [this site](https://www.kaggle.com/datasets) we can see which factors have stronger impact on education, and if and how are exam results correlated. 
+
+# Presentation of the data
+
+The data has eight variables and 1000 observations. The key variables include gender, race/ethnicity, parental level of education, lunch, test preparation course, math score, reading score and writing score.
+
+```{r}
+data%>%head(10)
+str(data)
+```
+
+
+## Number of students by gender
+
+### Visualisation
+
+```{r}
+data%>%ggplot()+geom_bar(aes(x=gender),width = 0.4, fill="red")+xlab("Gender")+ylab("Number of students")+theme_classic()+ylim(0,600)+ggtitle("Number of students by gender")+geom_text(stat = "count",aes(x=gender,label=..count..),vjust=-0.2)
+```
+
+### Conclusion/Interpretation
+
+In the dataset we have 518 female students, and 482 male students, so the distribution is pretty symmetric.
+
+## Number of students by race
+
+### Visualisation
+
+```{r}
+data%>%ggplot()+geom_bar(aes(x=race.ethnicity),width = 0.5,fill="yellow")+ggtitle("Number of students by race/ethnicity")+xlab("race/ethnicity")+ylab("Number of students")+theme_light()+ylim(0,400)+geom_text(aes(x=race.ethnicity,label=..count..),vjust=-0.2,stat = "count")
+```
+
+### Conclusion/Interpretation
+
+More than half of students are in groups C and D, while there is only 89 students in group A.
+
+## Correlation between reading, writing and math score
+
+### Visualisation
+
+```{r}
+line1<-lm(reading.score~writing.score, data = data)
+slope1<-line1[[1]][2]
+intercept1<-line1[[1]][1]
+line2<-lm(reading.score~math.score, data = data)
+slope2<-line2[[1]][2]
+intercept2<-line2[[1]][1]
+line3<-lm(writing.score~math.score, data = data)
+slope3<-line3[[1]][2]
+intercept3<-line3[[1]][1]
+p1<-data%>%ggplot()+geom_point(aes(x=writing.score,y=reading.score))+theme_light()+xlab("Writing score")+ylab("Reading score")+geom_abline(slope = slope1, intercept = intercept1)
+p2<-data%>%ggplot()+geom_point(aes(x=math.score,y=reading.score))+theme_light()+xlab("Math score")+ylab("Reading score")+geom_abline(slope = slope2,intercept = intercept2)
+p3<-data%>%ggplot()+geom_point(aes(x=math.score,y=writing.score))+theme_light()+xlab("Math score")+ylab("Writing score")+geom_abline(slope = slope3,intercept =intercept3)
+p1
+p2
+p3
+```
+
+## Correlation test for given graphs (Exploratory data analysis)
+
+```{r}
+cor.test(data$writing.score,data$reading.score)
+```
+
+```{r}
+cor.test(data$math.score,data$reading.score)
+```
+
+```{r}
+cor.test(data$writing.score,data$math.score)
+```
+
+### Conclusion/Interpretation
+
+A scatter plot is used to represent correlation between two variables. There are two types of correlation: positive and negative. If variables move in same direction the correlation is positive, otherwise it is negative. 
+In statistics, the Pearson correlation coefficient(PCC), is statistic that measures linear correlation between two variables. It has values between +1 and -1, where 1 is total positive linear correlation, 0 is no linear correlation, and -1 is total negative linear correlation. It is civariance of two variables divided by the product of their standard deviations. 
+Our results are around 0.8 for correlation of math socres with reading and writing scores, and 0.95 between writing and reading scores which suggests really strong correlation.
+
+
+## Impact of parental's level of education
+
+### Description of the problem
+
+We want to check if parental's level of education affects student's result on exam.
+
+### Exploratory data analysis
+
+```{r}
+data1<-data%>%mutate(StudentID = row_number()) %>%gather(key = "subject", value = "score", math.score:writing.score)
+data1m<-data1%>%group_by(StudentID)%>%summarise(mean=mean(score))
+final<-merge(data1m,data1[,c(1:6)],by="StudentID")%>%distinct(StudentID,.keep_all=TRUE)%>%group_by(parental.level.of.education)%>%summarise(average.score=mean(mean,na.rm = TRUE))%>%arrange(desc(average.score))
+knitr::kable(final)
+```
+
+### Conclusion/Interpretation
+
+We can see that students whose parents have higher level of education tend to be more successful on exams in comparison with students whose parents have just finished high school, but the difference is not that big. We can conclude that level of parental's education is not one of key factors for successful kid's education.
+
+## Average score by race
+
+### Presentation and description of the problem
+
+We saw that level of parental education is not significant and we would like to check what's the case with race.
+
+### Exploratory data analysis
+
+```{r}
+final1<-merge(data1m,data1[,c(1:6)],by="StudentID")%>%distinct(StudentID,.keep_all=TRUE)%>%group_by(race.ethnicity)%>%summarise(average.score=mean(mean,na.rm = TRUE))%>%arrange(desc(average.score))
+knitr::kable(final1)
+```
+
+### Conclusion
+
+Again, we didn't manage to find significant relationship between variables. Group E shows best results, and group A worst, but they are 2 smallest groups, and difference is not that big.
+
+
+
+
+## Impact of preparation course
+
+### Presentation and description of the problem
+
+We want to check if the students who complete preparation course show better results on the exam.
+
+### Visualisation
+
+```{r}
+data1%>%ggplot(aes(x=test.preparation.course,y=score,fill=test.preparation.course))+geom_boxplot()+theme_light()+xlab("Test preparation course")+ylab("Average score")+theme(title = element_blank())+scale_fill_brewer(type = "seq",palette = 2,aesthetics = "fill",direction = 1)+stat_summary(fun.y = mean,geom = "point")
+```
+
+
+### Conclusion/interpretation
+
+Boxplots are standardized way of displaying of distribution of data based on five number summary (minimum, first quartile(25th percentile), median, third quartile(75th percentile), and maximum)
+Based on our data, we can conclude that average score of students who completed preparation course is much higher than the average score of students who did not. We can also see that students that didn't complete preparation course have wider range of results, and more outliers below the minimum. 
+
+### Referencing
+
+@wiki:xxx
+
+@galarnyk_2019
+
+# References
+
+
+
